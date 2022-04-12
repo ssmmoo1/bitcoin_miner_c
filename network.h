@@ -36,6 +36,10 @@ bool login_to_pool(int socket_desc, char* username, char* password);
 */
 bool subcribe_block_notifs(int socket_desc, char** extranonce1, int* extranonce2_size);
 
+/*
+*Submit a successfull hash to the pool
+*/
+bool submit_block(int socket_desc, char* user, char* job_id, char* extranonce2, char* ntime, char* nonce);
 
 /*
 *Can be called after an RPC to verify there was no error with the RPC

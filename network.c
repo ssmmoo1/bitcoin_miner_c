@@ -142,6 +142,39 @@ bool subcribe_block_notifs(int socket_desc, char** extranonce1, int* extranonce2
     return true;
 }
 
+/*
+*Submit a successfull hash to the pool
+*/
+bool submit_block(int socket_desc, char* user, char* job_id, char* extranonce2, char* ntime, char* nonce)
+{
+    static int message_id = 3;
+    char message[200];
+    sprintf(message, "{\"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\":%d}\n", user, job_id, extranonce2, ntime, nonce, message_id);
+    message_id++;
+
+    if(send(socket_desc, message, strlen(message), 0) < 0)
+    {
+        printf("Failed to send block over socket\n");
+        return false;
+    }
+    else
+    {
+        printf("Successfully sent block data over socket\n");
+    }
+
+    if(check_rpc_reply(socket_desc) == true)
+    {
+        printf("Block submission was successful\n");
+        return true;
+    }
+    else
+    {
+        printf("Block submission failed \n");
+        return false;
+    }
+
+}
+
 
 /*
 *Blocking call that waits for server to request a RPC
