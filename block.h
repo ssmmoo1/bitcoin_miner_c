@@ -5,17 +5,6 @@
 #define HASH_SIZE 32 //size of a hash in bytes sha-256 is 32 bytes
 //Provide functions to create the blocks to hash
 
-#define MIN(x,y) ((x<y) ? x : y)
-
-
-
-struct bitcoin_block
-{
-    uint32_t nonce;
-    uint32_t nbits;
-} bitcoin_block;
-
-
 
 
 /*

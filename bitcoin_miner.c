@@ -5,13 +5,15 @@
 #include <stdbool.h>
 #include <netdb.h>	
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include <pthread.h>
 #include <signal.h>
 
 #include "network.h"
-#include "sha-256.h"
+#include "sha256-arm.h"
 #include "block.h"
+#include "pl_control.h"
 
 
 #define POOL_HOSTNAME "stratum.slushpool.com"
@@ -20,12 +22,7 @@
 #define USER_PASS "fU5hNeP#$#C3m!w"
 
 
-/*
-#define POOL_HOSTNAME "prohashing.com"
-#define POOL_PORT 3335
-#define USER_NAME "rawep"
-#define USER_PASS "a=sha-256,n=test,o=test"
-*/
+
 
 #define MAX_CB_SIZE 550
 
@@ -61,6 +58,9 @@ uint8_t difficulty_target[32] = {0,0,0,0,0,127,255,128,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 int socket_desc_g;
 
+//global to fold the block header data
+block_header_desc block_header_g;
+miner_results results_g;
 
 void block_found_handler(int signal)
 {
@@ -123,42 +123,32 @@ bool compute_target(uint32_t difficulty, uint8_t target[32])
 void* mining_thread(void* main_thread)
 {
     printf("Mining thread created\n");
-    uint8_t block_header_local[80];
-    uint8_t block_hash[32];
-    uint8_t temp_hash[32];
-    memcpy(block_header_local, block_header, 80);
-
-    for(uint32_t nonce=0; nonce<= 0xFFFFFFFF; nonce++)
+    reset_miner();
+    set_miner_parameters(&block_header_g, 39);
+    start_miner();
+    printf("Started Miner\n");
+    while(!miner_is_done())
     {
-        block_header_local[28] = (nonce & 0xFF000000) >> 24;
-        block_header_local[29] = (nonce & 0x00FF0000) >> 16;
-        block_header_local[30] = (nonce & 0x0000FF00) >> 8;
-        block_header_local[31] =  nonce & 0x000000FF;
-
-        if(nonce % 1000000 == 0)
-        {
-            printf("On nonce %d\n", nonce);
-
-            print_byte_arr(block_hash, 32);
-        }
-
-        calc_sha_256(temp_hash, block_header_local, 80);
-        calc_sha_256(block_hash, temp_hash, 32);
-        
-        if(check_hash(block_hash, difficulty_target) == true)
-        {
-            sprintf(good_nonce, "%08x", nonce);
-            printf("Found a hash\n");
-            print_byte_arr(block_hash, 32);
-            pthread_kill((pthread_t) main_thread, SIGUSR1);
-            break;
-        }
+        sleep(1);
     }
+    get_miner_results(&results_g);
+  
+    printf("Miner complete!\n");
+    printf("Block hash found: 0x");
+    for(int i = 7; i >= 0; i--) {
+        printf("%08X", results_g.hash[i]);
+    }
+    printf("\nNonce found: %08X\n", results_g.nonce);
+    sprintf(good_nonce, "%08x", results_g.nonce);
+    pthread_kill((pthread_t) main_thread, SIGUSR1);
 }
 
 
 int main(void)
 {
+    // Initialize the miner
+    assert(initialize_miner() == 0);
+
     //Register handler for finding a block
     signal(SIGUSR1, block_found_handler);
     pthread_t mining_thread_id = (pthread_t) NULL; //setup pthread for later
@@ -257,8 +247,8 @@ int main(void)
 
             //Calculate double hash of coinbase
             uint8_t temp_hash[32];
-            calc_sha_256(temp_hash, coinbase_bin, coinbase_bin_size);
-            calc_sha_256(coinbase_hash, temp_hash, 32);
+            sha256_process_arm((uint32_t *)temp_hash, coinbase_bin, coinbase_bin_size);
+            sha256_process_arm((uint32_t *)coinbase_hash, temp_hash, 32);
 
             printf("Calculated doublehash of coinbase\n");
 
@@ -287,26 +277,12 @@ int main(void)
 
             printf("Converted all headers to bytes\n");
 
-            //Copy all fields in the correct order to form the full block header (not including nonce)
-            uint8_t *block_header_pointer = block_header;
-            //block header = version + prevhash + merkle_root + ntime + nbits + nonce
-            memcpy(block_header_pointer, version_bytes, 4);
-            block_header_pointer +=4;
-
-            memcpy(block_header_pointer, prevhash_bytes, 32);
-            block_header_pointer += 32;
-       
-
-            memcpy(block_header_pointer, merkle_root, 32);
-            block_header_pointer +=32;
-        
-
-            memcpy(block_header_pointer, ntime_bytes, 4);
-            block_header_pointer+=4;
-     
-
-            memcpy(block_header_pointer, nbits_bytes, 4);
-            block_header_pointer+=4;
+            //Copy intro block header description struct
+            memcpy(&(block_header_g.version), version_bytes, 4);
+            memcpy(block_header_g.hashPrevBlock, prevhash_bytes, 32);
+            memcpy(block_header_g.hashMerkleRoot, merkle_root, 32);
+            memcpy(&(block_header_g.timestamp), ntime_bytes, 4);
+            memcpy(&(block_header_g.bits), nbits_bytes, 4);
 
             printf("Created block header up to nonce\n"); //nonce is added in by the mining thread
 
