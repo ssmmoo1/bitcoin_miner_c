@@ -6,12 +6,13 @@
 #include <netdb.h>	
 #include <arpa/inet.h>
 #include <assert.h>
-
+#include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
 
 #include "network.h"
-#include "sha256-arm.h"
+//#include "sha256-arm.h"
+#include "sha-256.h"
 #include "block.h"
 #include "pl_control.h"
 
@@ -24,7 +25,7 @@
 
 
 
-#define MAX_CB_SIZE 550
+#define MAX_CB_SIZE 520
 
 //block variables to compute hashes
 static uint32_t block_difficulty = 0;
@@ -129,9 +130,10 @@ void* mining_thread(void* main_thread)
     printf("Started Miner\n");
     while(!miner_is_done())
     {
-        sleep(1);
+        usleep(10000);
     }
     get_miner_results(&results_g);
+    reset_miner();
   
     printf("Miner complete!\n");
     printf("Block hash found: 0x");
@@ -244,13 +246,17 @@ int main(void)
 
             hex_2_byteArr(coinbase_hex, coinbase_bin, coinbase_bin_size);
             printf("Converted coinbase to byte array \n");
+            print_byte_arr(coinbase_bin, coinbase_bin_size);
 
             //Calculate double hash of coinbase
             uint8_t temp_hash[32];
-            sha256_process_arm((uint32_t *)temp_hash, coinbase_bin, coinbase_bin_size);
-            sha256_process_arm((uint32_t *)coinbase_hash, temp_hash, 32);
+            calc_sha_256(temp_hash, coinbase_bin, coinbase_bin_size);
+            calc_sha_256(coinbase_hash, temp_hash, 32);
+            //sha256_process_arm((uint32_t *)temp_hash, coinbase_bin, coinbase_bin_size);
+            //sha256_process_arm((uint32_t *)coinbase_hash, temp_hash, 32);
 
             printf("Calculated doublehash of coinbase\n");
+            print_byte_arr(coinbase_hash, 32);
 
 
             //calculate merkle root
@@ -261,6 +267,7 @@ int main(void)
             //reverse merkle root byte order
             //merkle_root needs to be big endian
             little_2_big(merkle_root, 32);
+            print_byte_arr(merkle_root,32);
 
             //Build block header
             //version + previous hash + merkle root + timestamp + nbits + nonce

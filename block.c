@@ -1,5 +1,6 @@
 #include "block.h"
-#include "sha256-arm.h"
+//#include "sha256-arm.h"
+#include "sha-256.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -65,8 +66,10 @@ bool produce_merkle_root(char** merkle_branches, uint8_t num_merkle_branches, ui
         hex_2_byteArr(merkle_branches[i], current_merkle_branch_bin, HASH_SIZE); //convert branch from hex array to byte array
         memcpy(next_root, merkle_root, HASH_SIZE);
         memcpy(next_root+HASH_SIZE, current_merkle_branch_bin, HASH_SIZE);
-        sha256_process_arm((uint32_t *)temp_hash, next_root, HASH_SIZE * 2);
-        sha256_process_arm((uint32_t *)merkle_root, temp_hash, HASH_SIZE);
+        calc_sha_256(temp_hash, next_root, HASH_SIZE * 2);
+        calc_sha_256(merkle_root, temp_hash, HASH_SIZE);
+        //sha256_process_arm((uint32_t *)temp_hash, next_root, HASH_SIZE * 2);
+        //sha256_process_arm((uint32_t *)merkle_root, temp_hash, HASH_SIZE);
     }
 
 }
