@@ -1,5 +1,9 @@
 # bitcoin_miner_c
 
+Custom bitcoin pool miner for use with an FPGA accelerated miner.
+
+
+
 Setup steps  
 
 1) Follow the steps here to compile and install Jannson https://github.com/akheron/jansson  
