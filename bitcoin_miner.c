@@ -16,8 +16,8 @@
 
 #define POOL_HOSTNAME "stratum.slushpool.com"
 #define POOL_PORT 3333
-#define USER_NAME "ssmmoo1"
-#define USER_PASS "fU5hNeP#$#C3m!w"
+#define USER_NAME "user"
+#define USER_PASS "pass"
 
 
 /*
